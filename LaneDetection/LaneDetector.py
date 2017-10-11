@@ -32,13 +32,16 @@ class LaneDetector(object):
     #for gaussian blur
     kernel_size = 13
 
+    """ entry point for image pipeline """
     def set_image(self, image):
         self.image = image
         self.h = image.shape[0]
         self.w = image.shape[1]
         print("w={},h={}".format(self.w,self.h))
 
-
+    """ creates an ROI in the shape of a triangle intended to
+        match the target highway that looks like a triangle because
+        of camera perspective projection """
     def set_road_roi(self, margin_left, margin_right, horizon_height):
         self.margin_left = margin_left
         self.margin_right = margin_right
