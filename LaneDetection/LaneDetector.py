@@ -1,4 +1,5 @@
 import numpy as np
+import cv2
 
 class LaneDetector(object):
     """
@@ -20,10 +21,16 @@ class LaneDetector(object):
 
     """
 
-    image = None
-    roi = None
+    image = roi = gray = blurred = None
     h=0
     w=0
+
+    #default values for road ROI
+    margin_left = 85
+    margin_right = 37
+    horizon_height = 255
+    #for gaussian blur
+    kernel_size = 13
 
     def set_image(self, image):
         self.image = image
@@ -59,4 +66,19 @@ class LaneDetector(object):
 
         # Mask region
         self.roi[~region_thresholds] = [0, 0, 0]
+
+    """ Apply smoothing algorithm """
+    def smooth(self):
+        self.set_road_roi(self.margin_left, self.margin_right, self.horizon_height)
+
+        #convert image to grayscale
+        self.gray = cv2.cvtColor(self.roi, cv2.COLOR_RGB2GRAY)
+
+        # Define a kernel size for Gaussian smoothing / blurring
+        # Note: this step is optional as cv2.Canny() applies a 5x5 Gaussian internally
+        self.blurred = cv2.GaussianBlur(self.gray,(self.kernel_size, self.kernel_size), 0)
+        
+        print("done")
+
+
 
