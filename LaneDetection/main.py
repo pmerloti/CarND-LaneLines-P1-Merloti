@@ -15,10 +15,11 @@ image = mpimg.imread('test_images/solidWhiteRight.jpg')
 lane_detector = LaneDetector()
 lane_detector.set_image(image)
 
-lane_detector.smooth()
+lane_detector.find_lines()
 
-output = lane_detector.blurred
-plt.imshow(output, cmap='gray')
+output = lane_detector.lines_img
+#plt.imshow(output, cmap='gray')
+plt.imshow(output)
 plt.show()
 
 #edge detection
