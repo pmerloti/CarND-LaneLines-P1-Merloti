@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from LineSegment import LineSegment
 
 class LaneDetector(object):
     """
@@ -9,29 +10,27 @@ class LaneDetector(object):
 
     ## Typical operation:
         1. call set_image and provide an image for image processing pipeline
-        2. set verbose level (defalt is silence)
-        3. call one of the pipeline operations. this will trigger all prior
+        2. call one of the pipeline operations. this will trigger all prior
            operations to perform
-        4. artifacts (intermediate images) can be invalid if correct step in
-           pipeline not executed
+        3. artifacts (intermediate images) can be invalid if pipeline step has
+           not been executed yet
 
     ## Pipeline:
-              
-    image -> roi -> edge detection -> line detection -> lane detection
+        image -> roi -> edge detection -> line detection -> lane detection
 
     """
 
-    image = roi = gray = blurred = edges = lines_img = None
-    lines = None
+    image = roi_img = gray_img = blurred_img = edges_img = lines_img = lanes_img = None
+    line_segments = None
     h=0
     w=0
 
-    #default values for road ROI
-    margin_left = 80
-    margin_right = 37
-    horizon_height = 255
     #for gaussian blur
     kernel_size = 13
+
+    #limits for lane detection
+    line_perspective_deg = 35
+    line_perspective_tolerance = 15
 
     def set_image(self, image):
         """ entry point for image pipeline """
@@ -40,18 +39,89 @@ class LaneDetector(object):
         self.w = image.shape[1]
         print("w={},h={}".format(self.w,self.h))
 
-    def set_road_roi(self, margin_left, margin_right, horizon_height):
+    def smooth(self):
+        """ Apply smoothing algorithm """
+        #self.set_road_roi(self.margin_left, self.margin_right, self.horizon_height)
+
+
+
+        #convert image to grayscale
+        self.gray_img = cv2.cvtColor(self.image, cv2.COLOR_RGB2GRAY)
+
+        # Define a kernel size for Gaussian smoothing / blurring
+        # Note: this step is optional as cv2.Canny() applies a 5x5 Gaussian internally
+        self.blurred_img = cv2.GaussianBlur(self.gray_img,(self.kernel_size, self.kernel_size), 0)
+        
+        print("done")
+
+    def find_edges(self, low_threshold=10, high_threshold=50):
+        """ creates an edge image """
+        self.smooth()
+        self.edges_img = cv2.Canny(self.blurred_img, low_threshold, high_threshold)
+
+    def find_lines(self, rho=5, theta=np.pi/180, threshold=15, min_line_len=10, max_line_gap=5):
+        """ uses hough transforms to find lines in the image """
+
+        self.find_edges()
+
+        #mask area
+        self.mask_road_roi(self.edges_img)
+
+        lines = cv2.HoughLinesP(self.edges_img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
+
+        self.line_segments = LineSegment.create_lines(lines)
+        
+        self.lines_img = np.copy(self.image)
+        self.draw_lines(self.lines_img, self.line_segments)
+
+    def find_lanes(self):
+        """
+        splits collection of lines found earlier in the processing pipeline into
+        left or right lines (based on slope of the line), then uses a weighted average
+        stragegy to come up with one lane object
+        """
+        #run pipeline through here
+        self.find_lines()
+
+        #find left line
+        lines_on_the_left = [x for x in self.line_segments if x.slope_ascendant()]
+        print("{0} lines on the left".format(len(lines_on_the_left)))
+        for left_line in lines_on_the_left:
+            within_tolerance = self.perspective_within_tolerance(left_line)
+            print("left: slope={0:0.4f} ({1:0.2f} deg), len={2:0.2f}: {3} >> {4}".\
+                format(left_line.slope,left_line.slope_degrees(),left_line.length(),left_line.line_vector,\
+                within_tolerance))
+
+        #find right line
+        lines_on_the_right = [x for x in self.line_segments if x.slope_descendant()]
+        print("{0} lines on the right".format(len(lines_on_the_right)))
+        for right_line in lines_on_the_right:
+            within_tolerance = self.perspective_within_tolerance(right_line)
+            print("right: slope={0:0.4f} ({1:0.2f} deg), len={2:0.2f}: {3} XX {4}".\
+                format(right_line.slope,right_line.slope_degrees(),right_line.length(),right_line.line_vector,\
+                within_tolerance))
+
+        #self.lane = RoadLane(left_line, right_line)
+
+        #self.draw_lane()
+
+        #self.lanes_img = np.copy(self.image)
+        #self.draw_line(self.lanes_img, left_line.line_vector)
+        #self.draw_line(self.lanes_img, self.lane.center_line.line_vector)
+        #self.draw_line(self.lanes_img, right_line.line_vector)
+
+    def perspective_within_tolerance(self, line_segment):
+        lower_limit = self.line_perspective_deg-self.line_perspective_tolerance
+        upper_limit = self.line_perspective_deg+self.line_perspective_tolerance
+        within_tol = lower_limit <= line_segment.slope_degrees() <= upper_limit
+        return within_tol
+
+    def mask_road_roi(self, image, margin_left=80, margin_right=37, horizon_height=255):
         """ 
         creates an ROI in the shape of a triangle intended to
         match the target highway that looks like a triangle because
         of camera perspective projection
         """
-        self.margin_left = margin_left
-        self.margin_right = margin_right
-        self.horizon_height = horizon_height
-
-        self.roi = np.copy(self.image)
-
         #create lines (y=ax+b) that shape the triangular ROI
         #why triangular? that's what typical road lanes disapearing into
         #the horizon look like
@@ -71,36 +141,15 @@ class LaneDetector(object):
             (YY < (XX*fit_bottom[0] + fit_bottom[1]))
 
         # Mask region
-        self.roi[~region_thresholds] = [0, 0, 0]
-
-    def smooth(self):
-        """ Apply smoothing algorithm """
-        self.set_road_roi(self.margin_left, self.margin_right, self.horizon_height)
-
-        #convert image to grayscale
-        self.gray = cv2.cvtColor(self.roi, cv2.COLOR_RGB2GRAY)
-
-        # Define a kernel size for Gaussian smoothing / blurring
-        # Note: this step is optional as cv2.Canny() applies a 5x5 Gaussian internally
-        self.blurred = cv2.GaussianBlur(self.gray,(self.kernel_size, self.kernel_size), 0)
-        
-        print("done")
-
-    def find_edges(self, low_threshold=10, high_threshold=50):
-        """ creates an edge image """
-        self.smooth()
-        self.edges = cv2.Canny(self.blurred, low_threshold, high_threshold)
-
-    def find_lines(self, rho=5, theta=np.pi/180, threshold=15, min_line_len=10, max_line_gap=5):
-        """ uses hough transforms to find lines in the image """
-        self.find_edges()
-        self.lines = cv2.HoughLinesP(self.edges, rho, theta, threshold, \
-            np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
-        #self.lines_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-        self.lines_img = np.copy(self.image)
-        self.draw_lines(self.lines_img, self.lines)
+        image[~region_thresholds] = 0
 
     def draw_lines(self, img, lines, color=[255, 0, 0], thickness=2):
         for line in lines:
-            for x1,y1,x2,y2 in line:
-                cv2.line(img, (x1, y1), (x2, y2), color, thickness)
+            self.draw_line(img, line.line_vector, color, thickness)
+
+    def draw_line(self, img, line, color=[255, 0, 0], thickness=2):
+        x1 = line[0]
+        y1 = line[1]
+        x2 = line[2]
+        y2 = line[3]
+        cv2.line(img, (x1, y1), (x2, y2), color, thickness)

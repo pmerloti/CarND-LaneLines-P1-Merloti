@@ -15,7 +15,7 @@ image = mpimg.imread('test_images/solidWhiteRight.jpg')
 lane_detector = LaneDetector()
 lane_detector.set_image(image)
 
-lane_detector.find_lines()
+lane_detector.find_lanes()
 
 output = lane_detector.lines_img
 #plt.imshow(output, cmap='gray')
