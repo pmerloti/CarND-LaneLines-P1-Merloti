@@ -17,7 +17,7 @@ lane_detector.set_image(image)
 
 lane_detector.find_lanes()
 
-output = lane_detector.lines_img
+output = lane_detector.lanes_img
 #plt.imshow(output, cmap='gray')
 plt.imshow(output)
 plt.show()

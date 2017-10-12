@@ -24,6 +24,7 @@ class LaneDetector(object):
     line_segments = None
     h=0
     w=0
+    lane_center_x = 0
 
     #for gaussian blur
     kernel_size = 13
@@ -83,38 +84,53 @@ class LaneDetector(object):
         #run pipeline through here
         self.find_lines()
 
-        #find left line
+        #debug image
+        self.lanes_img = np.copy(self.image)
+
+        #find left lines
+        left_lines = []
         lines_on_the_left = [x for x in self.line_segments if x.slope_ascendant()]
         print("{0} lines on the left".format(len(lines_on_the_left)))
         for left_line in lines_on_the_left:
-            within_tolerance = self.perspective_within_tolerance(left_line)
+            within_tolerance = self.line_within_tolerance(left_line,"left")
+            if within_tolerance:
+                self.draw_line(self.lanes_img, left_line.line_vector, [255,0,0], 1)
+                left_lines = left_line
             print("left: slope={0:0.4f} ({1:0.2f} deg), len={2:0.2f}: {3} >> {4}".\
                 format(left_line.slope,left_line.slope_degrees(),left_line.length(),left_line.line_vector,\
                 within_tolerance))
 
-        #find right line
+        #find right lines
+        right_lines = []
         lines_on_the_right = [x for x in self.line_segments if x.slope_descendant()]
         print("{0} lines on the right".format(len(lines_on_the_right)))
         for right_line in lines_on_the_right:
-            within_tolerance = self.perspective_within_tolerance(right_line)
+            within_tolerance = self.line_within_tolerance(right_line,"right")
+            if within_tolerance:
+                self.draw_line(self.lanes_img, right_line.line_vector, [0,255,0], 1)
+                right_lines = right_line
             print("right: slope={0:0.4f} ({1:0.2f} deg), len={2:0.2f}: {3} XX {4}".\
                 format(right_line.slope,right_line.slope_degrees(),right_line.length(),right_line.line_vector,\
                 within_tolerance))
 
-        #self.lane = RoadLane(left_line, right_line)
+        #create model of lane
+        self.lane = RoadLane(left_lines, right_lines)
+        #self.draw_lane(self.lanes_img, self.lane)
 
-        #self.draw_lane()
 
-        #self.lanes_img = np.copy(self.image)
-        #self.draw_line(self.lanes_img, left_line.line_vector)
-        #self.draw_line(self.lanes_img, self.lane.center_line.line_vector)
-        #self.draw_line(self.lanes_img, right_line.line_vector)
-
-    def perspective_within_tolerance(self, line_segment):
-        lower_limit = self.line_perspective_deg-self.line_perspective_tolerance
-        upper_limit = self.line_perspective_deg+self.line_perspective_tolerance
-        within_tol = lower_limit <= line_segment.slope_degrees() <= upper_limit
-        return within_tol
+    def line_within_tolerance(self, line_segment, side):
+        #does the angle seem ok?
+        lower_angle_limit = self.line_perspective_deg-self.line_perspective_tolerance
+        upper_angle_limit = self.line_perspective_deg+self.line_perspective_tolerance
+        within_angular_tol = lower_angle_limit <= line_segment.slope_degrees() <= upper_angle_limit
+        #is it long enough?
+        within_len_tol = line_segment.length() > 15
+        #is it on the correct side of the lane?
+        if side=="left":
+            side_ok = line_segment.line_vector[0] < self.lane_center_x
+        else:
+            side_ok = line_segment.line_vector[2] > self.lane_center_x
+        return within_angular_tol and within_len_tol and side_ok
 
     def mask_road_roi(self, image, margin_left=80, margin_right=37, horizon_height=255):
         """ 
@@ -122,12 +138,16 @@ class LaneDetector(object):
         match the target highway that looks like a triangle because
         of camera perspective projection
         """
+
         #create lines (y=ax+b) that shape the triangular ROI
         #why triangular? that's what typical road lanes disapearing into
         #the horizon look like
         point_left = [margin_left,self.h]
         point_right = [self.w-margin_right,self.h]
         point_horizon = [margin_left+(point_right[0]-margin_left)/2,self.h-horizon_height]
+        
+        self.lane_center_x = point_left[0] + (point_right[0]-point_left[0])/2
+
         fit_left = np.polyfit((point_left[0], point_horizon[0]), (point_left[1], point_horizon[1]), 1)
         fit_right = np.polyfit((point_right[0], point_horizon[0]), (point_right[1], point_horizon[1]), 1)
         fit_bottom = np.polyfit((point_left[0], point_right[0]), (point_left[1], point_right[1]), 1)
