@@ -27,6 +27,8 @@ clip = cv2.VideoCapture('test_videos/challenge.mp4')
 lane_detector = LaneDetector()
 lane_detector.quiet()
 
+fourcc = cv2.VideoWriter_fourcc(*'DIVX')
+out = cv2.VideoWriter('test_videos/out.avi',fourcc,20.0,(960,540))
 
 while(clip.isOpened()):
     ret,frame = clip.read()
@@ -41,10 +43,13 @@ while(clip.isOpened()):
         img = cv2.addWeighted(frame, 1., overlay, 0.9, 0.)
 
         cv2.imshow('frame',img)
+        out.write(img)
 
     if cv2.waitKey(1)&0xFF == ord('q'):
         break
 
+print("releasing video resources")
+out.release()
 clip.release()
 cv2.destroyAllWindows()
 
