@@ -18,12 +18,12 @@ class RoadLanes(object):
         self.calculate_right_lane(right_lines)
 
     def calculate_left_lane(self, left_lines):
-        if left_lines is not None:
+        if left_lines:
             m,b = self.calculate_average_line(left_lines)
             self.left_line = LineSegment.from_slope_equation(m,b,self.min_y,self.max_y)
 
     def calculate_right_lane(self, right_lines):
-        if right_lines is not None:
+        if right_lines:
             m,b = self.calculate_average_line(right_lines)
             self.right_line = LineSegment.from_slope_equation(m,b,self.min_y,self.max_y)
 

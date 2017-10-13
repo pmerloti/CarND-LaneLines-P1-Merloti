@@ -26,6 +26,7 @@ class LaneDetector(object):
     h=0
     w=0
     lane_center_x = 0
+    is_quiet = False
 
     #for gaussian blur
     kernel_size = 13
@@ -44,7 +45,11 @@ class LaneDetector(object):
         self.image = image
         self.h = image.shape[0]
         self.w = image.shape[1]
-        print("w={},h={}".format(self.w,self.h))
+        if not self.is_quiet:
+            print("w={},h={}".format(self.w,self.h))
+
+    def quiet(self):
+        self.is_quiet = True
 
     def smooth(self):
         """ Apply smoothing algorithm """
@@ -55,8 +60,6 @@ class LaneDetector(object):
         # Define a kernel size for Gaussian smoothing / blurring
         # Note: this step is optional as cv2.Canny() applies a 5x5 Gaussian internally
         self.blurred_img = cv2.GaussianBlur(self.gray_img,(self.kernel_size, self.kernel_size), 0)
-        
-        print("done")
 
     def find_edges(self, low_threshold=10, high_threshold=50):
         """ creates an edge image """
@@ -93,28 +96,32 @@ class LaneDetector(object):
         #find left lines
         left_lines = []
         lines_on_the_left = [x for x in self.line_segments if x.slope_ascendant()]
-        print("{0} lines on the left".format(len(lines_on_the_left)))
+        if not self.is_quiet:
+            print("{0} lines on the left".format(len(lines_on_the_left)))
         for left_line in lines_on_the_left:
             within_tolerance = self.line_within_tolerance(left_line,"left")
             if within_tolerance:
                 self.draw_line(self.lanes_img, left_line.line_vector, [255,0,0], 1)
                 left_lines.append(left_line)
-            print("left: slope={0:0.4f} ({1:0.2f} deg), len={2:0.2f}: {3} >> {4}".\
-                format(left_line.slope,left_line.slope_degrees(),left_line.length(),left_line.line_vector,\
-                within_tolerance))
+            if not self.is_quiet:
+                print("left: slope={0:0.4f} ({1:0.2f} deg), len={2:0.2f}: {3} >> {4}".\
+                    format(left_line.slope,left_line.slope_degrees(),left_line.length(),left_line.line_vector,\
+                    within_tolerance))
 
         #find right lines
         right_lines = []
         lines_on_the_right = [x for x in self.line_segments if x.slope_descendant()]
-        print("{0} lines on the right".format(len(lines_on_the_right)))
+        if not self.is_quiet:
+            print("{0} lines on the right".format(len(lines_on_the_right)))
         for right_line in lines_on_the_right:
             within_tolerance = self.line_within_tolerance(right_line,"right")
             if within_tolerance:
                 self.draw_line(self.lanes_img, right_line.line_vector, [0,255,0], 1)
                 right_lines.append(right_line)
-            print("right: slope={0:0.4f} ({1:0.2f} deg), len={2:0.2f}: {3} XX {4}".\
-                format(right_line.slope,right_line.slope_degrees(),right_line.length(),right_line.line_vector,\
-                within_tolerance))
+            if not self.is_quiet:
+                print("right: slope={0:0.4f} ({1:0.2f} deg), len={2:0.2f}: {3} XX {4}".\
+                    format(right_line.slope,right_line.slope_degrees(),right_line.length(),right_line.line_vector,\
+                    within_tolerance))
 
         #create model of lane
         self.lane = RoadLanes(left_lines, right_lines, self.h, self.h-self.horizon_height+50)
@@ -154,7 +161,8 @@ class LaneDetector(object):
         fit_left = np.polyfit((point_left[0], point_horizon[0]), (point_left[1], point_horizon[1]), 1)
         fit_right = np.polyfit((point_right[0], point_horizon[0]), (point_right[1], point_horizon[1]), 1)
         fit_bottom = np.polyfit((point_left[0], point_right[0]), (point_left[1], point_right[1]), 1)
-        print('point left:{0}, point horizon={1}, point right={2}'.format(point_left, point_horizon, point_right))
+        if not self.is_quiet:
+            print('point left:{0}, point horizon={1}, point right={2}'.format(point_left, point_horizon, point_right))
 
         # Find the region inside the lines
         XX, YY = np.meshgrid(np.arange(0, self.w), np.arange(0, self.h))
@@ -171,8 +179,10 @@ class LaneDetector(object):
             self.draw_line(img, line.line_vector, color, thickness)
 
     def draw_lane(self, img, lane):
-        self.draw_line(img, lane.left_line.line_vector, [0,0,200], 3)
-        self.draw_line(img, lane.right_line.line_vector, [0,0,200], 3)
+        if lane.left_line:
+            self.draw_line(img, lane.left_line.line_vector, [0,0,200], 3)
+        if lane.right_line:
+            self.draw_line(img, lane.right_line.line_vector, [0,0,200], 3)
 
     def draw_line(self, img, line, color=[255, 0, 0], thickness=2):
         x1 = line[0]

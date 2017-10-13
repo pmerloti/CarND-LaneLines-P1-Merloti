@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>2e4654b0-2208-441e-889b-c952811e8b36</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>main_OneFrame.py</StartupFile>
+    <StartupFile>main_Video.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -31,6 +31,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="main_OneFrame.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="main_Video.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="RoadLanes.py">
