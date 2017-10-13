@@ -7,16 +7,32 @@ class LineSegment(object):
     """
 
     slope = None
+    y_intercept = None
     
     def __init__(self, line_vector):
         """
         initializes given a 4-d vector in the format [x1,y1,x2,y2]
         """
         self.line_vector = line_vector
-        #since pixel y axis points down (origin is on top left corner
-        #of image), our slope formula is adjusted to
-        #(y1-y2)/(x2-x1)
-        self.slope = (line_vector[1]-line_vector[3])/(line_vector[2]-line_vector[0])
+        #m=(y2-y1)/(x2-x1)
+        self.slope = (line_vector[3]-line_vector[1])/(line_vector[2]-line_vector[0])
+        self.y_intercept = line_vector[1] - self.slope*line_vector[0]
+
+
+    @classmethod
+    def from_4d_vector(cls, line_vector):
+        return cls(line_vector)
+    
+    @classmethod
+    def from_slope_equation(cls, m,b,min_y,max_y):
+        """
+        initializes given slope, y-intercept and two y values
+        """
+        x1=(min_y-b)/m
+        x2=(max_y-b)/m
+        line_vector = [x1,min_y,x2,max_y]
+        return cls(line_vector)
+    
 
     def create_lines(line_vectors):
         """
@@ -40,10 +56,12 @@ class LineSegment(object):
 
 
     def slope_ascendant(self):
-        return self.slope > 0
+        #inverted because in pixel space y points down
+        return self.slope < 0
 
     def slope_descendant(self):
-        return self.slope < 0
+        #inverted because in pixel space y points down
+        return self.slope > 0
 
     def slope_degrees(self):
         return np.rad2deg(np.arctan(self.slope) * np.sign(self.slope));

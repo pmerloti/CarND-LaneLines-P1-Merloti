@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>2e4654b0-2208-441e-889b-c952811e8b36</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>main.py</StartupFile>
+    <StartupFile>main_OneFrame.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -30,7 +30,10 @@
     <Compile Include="LineSegment.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="main.py">
+    <Compile Include="main_OneFrame.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="RoadLanes.py">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>

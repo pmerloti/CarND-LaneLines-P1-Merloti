@@ -7,7 +7,7 @@ import numpy as np
 
 
 #reading in an image
-image = mpimg.imread('test_images/solidWhiteRight.jpg')
+image = mpimg.imread('test_images/whiteCarLaneSwitch.jpg')
 
 #ROI
 

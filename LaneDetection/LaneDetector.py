@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 from LineSegment import LineSegment
+from RoadLanes import RoadLanes
 
 class LaneDetector(object):
     """
@@ -33,6 +34,11 @@ class LaneDetector(object):
     line_perspective_deg = 35
     line_perspective_tolerance = 15
 
+    #default roi
+    margin_left=80
+    margin_right=37
+    horizon_height=255
+
     def set_image(self, image):
         """ entry point for image pipeline """
         self.image = image
@@ -42,9 +48,6 @@ class LaneDetector(object):
 
     def smooth(self):
         """ Apply smoothing algorithm """
-        #self.set_road_roi(self.margin_left, self.margin_right, self.horizon_height)
-
-
 
         #convert image to grayscale
         self.gray_img = cv2.cvtColor(self.image, cv2.COLOR_RGB2GRAY)
@@ -95,7 +98,7 @@ class LaneDetector(object):
             within_tolerance = self.line_within_tolerance(left_line,"left")
             if within_tolerance:
                 self.draw_line(self.lanes_img, left_line.line_vector, [255,0,0], 1)
-                left_lines = left_line
+                left_lines.append(left_line)
             print("left: slope={0:0.4f} ({1:0.2f} deg), len={2:0.2f}: {3} >> {4}".\
                 format(left_line.slope,left_line.slope_degrees(),left_line.length(),left_line.line_vector,\
                 within_tolerance))
@@ -108,14 +111,14 @@ class LaneDetector(object):
             within_tolerance = self.line_within_tolerance(right_line,"right")
             if within_tolerance:
                 self.draw_line(self.lanes_img, right_line.line_vector, [0,255,0], 1)
-                right_lines = right_line
+                right_lines.append(right_line)
             print("right: slope={0:0.4f} ({1:0.2f} deg), len={2:0.2f}: {3} XX {4}".\
                 format(right_line.slope,right_line.slope_degrees(),right_line.length(),right_line.line_vector,\
                 within_tolerance))
 
         #create model of lane
-        self.lane = RoadLane(left_lines, right_lines)
-        #self.draw_lane(self.lanes_img, self.lane)
+        self.lane = RoadLanes(left_lines, right_lines, self.h, self.h-self.horizon_height+50)
+        self.draw_lane(self.lanes_img, self.lane)
 
 
     def line_within_tolerance(self, line_segment, side):
@@ -132,7 +135,7 @@ class LaneDetector(object):
             side_ok = line_segment.line_vector[2] > self.lane_center_x
         return within_angular_tol and within_len_tol and side_ok
 
-    def mask_road_roi(self, image, margin_left=80, margin_right=37, horizon_height=255):
+    def mask_road_roi(self, image):
         """ 
         creates an ROI in the shape of a triangle intended to
         match the target highway that looks like a triangle because
@@ -142,9 +145,9 @@ class LaneDetector(object):
         #create lines (y=ax+b) that shape the triangular ROI
         #why triangular? that's what typical road lanes disapearing into
         #the horizon look like
-        point_left = [margin_left,self.h]
-        point_right = [self.w-margin_right,self.h]
-        point_horizon = [margin_left+(point_right[0]-margin_left)/2,self.h-horizon_height]
+        point_left = [self.margin_left,self.h]
+        point_right = [self.w-self.margin_right,self.h]
+        point_horizon = [self.margin_left+(point_right[0]-self.margin_left)/2,self.h-self.horizon_height]
         
         self.lane_center_x = point_left[0] + (point_right[0]-point_left[0])/2
 
@@ -167,9 +170,13 @@ class LaneDetector(object):
         for line in lines:
             self.draw_line(img, line.line_vector, color, thickness)
 
+    def draw_lane(self, img, lane):
+        self.draw_line(img, lane.left_line.line_vector, [0,0,200], 3)
+        self.draw_line(img, lane.right_line.line_vector, [0,0,200], 3)
+
     def draw_line(self, img, line, color=[255, 0, 0], thickness=2):
         x1 = line[0]
         y1 = line[1]
         x2 = line[2]
         y2 = line[3]
-        cv2.line(img, (x1, y1), (x2, y2), color, thickness)
+        cv2.line(img, (int(x1), int(y1)), (int(x2), int(y2)), color, thickness)
