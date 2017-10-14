@@ -53,15 +53,3 @@ out.release()
 clip.release()
 cv2.destroyAllWindows()
 
-
-# get image dimensions and make internal copy
-#lane_detector = LaneDetector()
-#lane_detector.set_image(image)
-#lane_detector.find_lanes()
-
-#output = lane_detector.lanes_img
-#plt.imshow(output, cmap='gray')
-#plt.imshow(output)
-#plt.show()
-
-

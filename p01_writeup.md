@@ -8,9 +8,16 @@ The goals / steps of this project are the following:
 4. Reflect on your work in a written report
 
 
-[//]: # (Image References)
+[//]: # "Image References"
 
-[image1]: ./examples/grayscale.jpg "Grayscale"
+[image1]: ./LaneDetection/test_images/out_solidWhiteCurve.png
+[image2]: ./LaneDetection/test_images/out_solidWhiteRight.png
+[image3]: ./LaneDetection/test_images/out_solidYellowCurve.png
+[image4]: ./LaneDetection/test_images/out_solidYellowCurve2.png
+[image5]: ./LaneDetection/test_images/out_solidYellowLeft.png
+[image6]: ./LaneDetection/test_images/out_whiteCarLaneSwitch.png
+[image7]: ./tarsnake.jpg
+[image8]: ./shadows.jpg
 
 ---
 
@@ -37,17 +44,42 @@ lanes_img     #source image (color) with annotated lanes
 
 Once all Hough lines are filtered, averaging is encapsulated in the ```RoadLanes``` class. The main idea is that once lines are identified to be in the right or left side of the road, we can average them to find the best representation of that line. An additional improvement is that the length of the line is used for a weighted average. One can observe that the most stable lines from a dashed lane line are the longer ones.
 
+Here are the processed images for the provided test inputs:
+
+![test 1][image1] 
+
+![test 2][image2]
+
+![test 3][image3]
+
+![test 4][image4]
+
+![test 5][image5]
+
+![test 6][image6]
+
+
+
 ## Shortcomings and Considerations
+
+- The first and most obvious is that not all roads have nice lane lines painted on the ground. Some roads don't even have lanes painted on the ground.
+
+  ![tarsnake][image7]
+
+- The algorithm assumes an ROI that mimics the shape of the lane lines in perspective, or a triangular shape. Whilst this works well for California highways, it probably will not hold true for narrow and twisted switchbacks.
+
+- Hough transform uses polar coordinates for a good reason. In my solution, to find the best line among several edge lines, I average ```m``` and ```b``` of several lines represented as ```y=mx+b```. This works well for slanted lines like the ones we see on the lane lines, but it will blow on my face if one of lines returning from Hough is perfectly vertical.
+
+- Most of image processing blocks have hardcoded parameters. In general, hardcoded parameters in changing environments (rainy, sunny, cloudy, snowy) is a bad idea. It also creates a dependency on the camera and a requirement for prior calibration of parameters. Some sort of dynamic discovery and self optimization would be ideal.
+
+- Lastly, image processing by itself doesn't solve all problems. Imaging sensors have dynamic range limitations. Cheaper cameras cannot resolve very bright sunlit surfaces and very dark shadow areas at the same time. It will probably use one of the areas for auto-exposure and saturate the other region to either totally white or totally black. A systems engineer has to carefully select the sensor with appropriate characteristics for this problem.
+
+![shadows][image8]
 
 ## Improvements
 
-Lane departure detection
-- what happens when lanes start shifting
-
+- The state we leave this problem is not very far from detecting where the car is positioned within the lane lines. A relatively simple modification would be to monitor and estimate the position of the car within the lane and issue an audible alarm when the car is departing the lane. If the system is connected to a camera in real time, then it could work as a rudimentary lane departure system.
 
 ## References
 
 [Padu's GitHub](https://github.com/pmerloti/CarND-LaneLines-P1-Merloti) - Source code, documentation and video files
-
-
-![alt text][image1]
